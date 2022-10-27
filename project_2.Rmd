@@ -35,9 +35,9 @@ colSums(is.na(train))
 
 ```{r}
 #Preprocessing train
-train['IsHoliday'] = as.integer(as.logical(train$IsHoliday))
-
 data4 <- train
+
+data4['IsHoliday'] = as.integer(as.logical(data4$IsHoliday))
 
 #formatting date to dd-mm-yyyy
 data4$Date <- format(data4$Date, "%d-%m-%Y")
@@ -91,21 +91,21 @@ train.x$quarter <- as.numeric(train.x$quarter)
 #Preprocessing test
 test['IsHoliday'] = as.integer(as.logical(test$IsHoliday))
 
-data4 <- test
+data5 <- test
 
 #formatting date to dd-mm-yyyy
-data4$Date <- format(data4$Date, "%d-%m-%Y")
+data5$Date <- format(data5$Date, "%d-%m-%Y")
 
 #changing date column in dataframe to date format & arranging in ascending order as per dates
-data4$Date <- lubridate::dmy(data4$Date)
-data4 <- dplyr::arrange(data4,Date)
+data5$Date <- lubridate::dmy(data5$Date)
+data5 <- dplyr::arrange(data5,Date)
 
 #Creating a week number,month,quarter column in dataframe
-data4$Week_Number <- lubridate::week(data4$Date)
+data5$Week_Number <- lubridate::week(data5$Date)
 
 #adding quarter & month columns
-data4$month <- lubridate::month(data4$Date)
-data4$quarter <- lubridate::quarter(data4$Date)
+data5$month <- lubridate::month(data5$Date)
+data5$quarter <- lubridate::quarter(data5$Date)
 
 
 ##Creating a event type dataframe##
@@ -123,15 +123,15 @@ Events <-c(rep("Super Bowl", 4), rep("Labor Day", 4),rep("Thanksgiving", 4), rep
 Holidays_Data <- data.frame(Events,Holiday_date)
 
 #merging both dataframes
-data4<-merge(data4,Holidays_Data, by.x= "Date", by.y="Holiday_date", all.x = TRUE)
+data5<-merge(data5,Holidays_Data, by.x= "Date", by.y="Holiday_date", all.x = TRUE)
 
 #Replacing null values in Event with No_Holiday
-data4$Events = as.character(data4$Events)
-data4$Events[is.na(data4$Events)]= "No_Holiday"
+data5$Events = as.character(data5$Events)
+data5$Events[is.na(data5$Events)]= "No_Holiday"
 
 #Drop Unwanted columns and create test.x
 x_test_drop <- c('Date', 'Weekly_Sales')
-test.x = data4[,!(names(data4) %in% x_test_drop)]
+test.x = data5[,!(names(data5) %in% x_test_drop)]
 
 #Convert to factor and numeric
 test.x$Events <- as.factor(test.x$Events)
@@ -144,7 +144,7 @@ test.x$quarter <- as.numeric(test.x$quarter)
 ```{r}
 model = lm(formula = as.matrix(train.y) ~ . , data = train.x)
 y_pred_train = predict(model, newdata = test.x)
-y_pred_train
+#y_pred_train
 ```
 
 ```{r}
@@ -152,5 +152,6 @@ y_pred_train
 cv.out = cv.glmnet(data.matrix(train.x), data.matrix(train.y), alpha = 1)
 best.lam = cv.out$lambda.min
 Ytest.pred = predict(cv.out, s = best.lam, newx = data.matrix(test.x))
+colnames(Ytest.pred)[1]<-"Weekly_Pred"
 ```
 
