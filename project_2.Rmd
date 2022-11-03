@@ -81,10 +81,9 @@ train.x = data4[,!(names(data4) %in% x_train_drop)]
 train.y = train['Weekly_Sales']
 
 #Convert to factor and numeric
-train.x$Events <- as.factor(train.x$Events)
+train.x$Events <- as.numeric(as.factor(train.x$Events))
 train.x$IsHoliday <- as.numeric(train.x$IsHoliday)
 train.x$quarter <- as.numeric(train.x$quarter)
-
 
 
 
@@ -134,7 +133,7 @@ x_test_drop <- c('Date', 'Weekly_Sales')
 test.x = data5[,!(names(data5) %in% x_test_drop)]
 
 #Convert to factor and numeric
-test.x$Events <- as.factor(test.x$Events)
+test.x$Events <- as.numeric(as.factor(test.x$Events))
 test.x$IsHoliday <- as.numeric(test.x$IsHoliday)
 test.x$quarter <- as.numeric(test.x$quarter)
 
@@ -144,14 +143,30 @@ test.x$quarter <- as.numeric(test.x$quarter)
 ```{r}
 model = lm(formula = as.matrix(train.y) ~ . , data = train.x)
 y_pred_train = predict(model, newdata = test.x)
+#print(y_pred_train)
 #y_pred_train
 ```
 
 ```{r}
+#print(test)
 #Lasso Regression
-cv.out = cv.glmnet(data.matrix(train.x), data.matrix(train.y), alpha = 1)
+#print(data.matrix(train.y))
+cv.out = cv.glmnet(as.matrix(train.x), as.matrix(train.y), alpha = 0)
 best.lam = cv.out$lambda.min
-Ytest.pred = predict(cv.out, s = best.lam, newx = data.matrix(test.x))
-colnames(Ytest.pred)[1]<-"Weekly_Pred"
+#best.lam = cv.out$lambda.1se
+Ytest.pred = predict(cv.out, s = best.lam, newx = as.matrix(test.x))
+Ytest.pred.df = data.frame(Date = test[3], Store = test[1], Dept = test[2], Weekly_Pred = Ytest.pred)
+colnames(Ytest.pred.df)[4]<-"Weekly_Pred"
+print(Ytest.pred.df)
+```
+
+```{r}
+#xgb.model <- xgboost(data = data.matrix(train.x), 
+                       #label = as.matrix(train.y), max_depth = 6,
+                       #eta = 0.05, nrounds = 5000,
+                       #subsample = 0.5,
+                       #verbose = FALSE)
+#test = predict(xgb.model, data.matrix(test.x))
+#print(test)
 ```
 

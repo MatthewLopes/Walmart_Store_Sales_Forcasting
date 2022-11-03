@@ -5,8 +5,8 @@ library(glmnet)
 # Source: https://www.kaggle.com/code/sarvaninandipati/analysis-prediction-of-walmart-sales-using-r/notebook
 
 # Get Datasets
-train <- readr::read_csv('train_ini.csv')
-test <- readr::read_csv('test.csv')
+#train <- readr::read_csv('train_ini.csv')
+#test <- readr::read_csv('test.csv')
 
 
 mypredict <- function() {
@@ -58,7 +58,7 @@ mypredict <- function() {
   train.y = train['Weekly_Sales']
   
   #Convert to factor and numeric
-  train.x$Events <- as.factor(train.x$Events)
+  train.x$Events <- as.numeric(as.factor(train.x$Events))
   train.x$IsHoliday <- as.numeric(train.x$IsHoliday)
   train.x$quarter <- as.numeric(train.x$quarter)
   
@@ -110,7 +110,7 @@ mypredict <- function() {
   test.x = data5[,!(names(data5) %in% x_test_drop)]
   
   #Convert to factor and numeric
-  test.x$Events <- as.factor(test.x$Events)
+  test.x$Events <- as.numeric(as.factor(test.x$Events))
   test.x$IsHoliday <- as.numeric(test.x$IsHoliday)
   test.x$quarter <- as.numeric(test.x$quarter)
   
@@ -120,12 +120,18 @@ mypredict <- function() {
   #y_pred_train
   
   #Lasso Regression
-  cv.out = cv.glmnet(data.matrix(train.x), data.matrix(train.y), alpha = 1)
+  cv.out = cv.glmnet(as.matrix(train.x), as.matrix(train.y), alpha = 0)
   best.lam = cv.out$lambda.min
-  Ytest.pred = predict(cv.out, s = best.lam, newx = data.matrix(test.x))
-  colnames(Ytest.pred)[1]<-"Weekly_Pred"
+  #best.lam = cv.out$lambda.1se
+  Ytest.pred = predict(cv.out, s = best.lam, newx = as.matrix(test.x))
+  Ytest.pred.df = data.frame(Date = test[3], Store = test[1], Dept = test[2], Weekly_Pred = Ytest.pred)
+  colnames(Ytest.pred.df)[4]<-"Weekly_Pred"
   
-  return(Ytest.pred)
+  
+  
+  # date weekly_pred
+  
+  return(Ytest.pred.df)
 }
 
 

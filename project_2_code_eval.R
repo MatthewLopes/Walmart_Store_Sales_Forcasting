@@ -1,5 +1,9 @@
 source("mymain.R")
 
+library(readr)
+library(magrittr)
+library(dplyr)
+
 # read in train / test dataframes
 train <- readr::read_csv('train_ini.csv')
 test <- readr::read_csv('test.csv')
@@ -12,14 +16,18 @@ for (t in 1:num_folds) {
   # *** THIS IS YOUR PREDICTION FUNCTION ***
   test_pred <- mypredict()
   
+  #print(test_pred)
+  
   # read new data from fold_t 
   fold_file <- paste0('fold_', t, '.csv')
-  new_train <- readr::read_csv(fold_file, 
-                               col_types = cols())
+  new_train <- readr::read_csv(fold_file, col_types = cols())
+  
+  #print(new_train)
   
   # extract predictions matching up to the new data
-  scoring_tbl <- new_train %>% 
-    left_join(test_pred, by = c('Date', 'Store', 'Dept'))
+  scoring_tbl <- new_train %>% left_join(test_pred, by = c('Date', 'Store', 'Dept'))
+  
+  print(scoring_tbl)
   
   # compute WMAE
   actuals <- scoring_tbl$Weekly_Sales
