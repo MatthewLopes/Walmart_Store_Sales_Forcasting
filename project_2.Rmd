@@ -7,6 +7,7 @@ date: "2022-10-26"
 ```{r}
 # Libraries
 library(glmnet)
+library(dplyr)
 
 
 # Source: https://www.kaggle.com/code/sarvaninandipati/analysis-prediction-of-walmart-sales-using-r/notebook
@@ -34,6 +35,46 @@ colSums(is.na(train))
 ```
 
 ```{r}
+train_pairs <- train[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
+test_pairs <- test[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
+unique_pairs <- intersect(train_pairs[, 1:2], test_pairs[, 1:2])
+
+# pick out the needed training samples, convert to dummy coding, then put them into a list
+train_split <- unique_pairs %>% 
+  left_join(train, by = c('Store', 'Dept')) %>% 
+  mutate(Wk = factor(ifelse(lubridate::year(Date) == 2010, lubridate::week(Date) - 1, lubridate::week(Date)), levels = 1:52)) %>% 
+  mutate(Yr = lubridate::year(Date))
+train_split = as_tibble(model.matrix(~ Weekly_Sales + Store + Dept + Yr + Wk, train_split)) %>% group_split(Store, Dept)
+  
+# do the same for the test set
+test_split <- unique_pairs %>% 
+  left_join(test, by = c('Store', 'Dept')) %>% 
+  mutate(Wk = factor(ifelse(lubridate::year(Date) == 2010, lubridate::week(Date) - 1, lubridate::week(Date)), levels = 1:52)) %>% 
+  mutate(Yr = lubridate::year(Date))
+test_split = as_tibble(model.matrix(~ Store + Dept + Yr + Wk, test_split)) %>% mutate(Date = test_split$Date) %>% group_split(Store, Dept)
+
+# pre-allocate a list to store the predictions
+test_pred <- vector(mode = "list", length = nrow(unique_pairs))
+
+# perform regression for each split, note we used lm.fit instead of lm
+for (i in 1:nrow(unique_pairs)) {
+  tmp_train <- train_split[[i]]
+  tmp_test <- test_split[[i]]
+  
+  mycoef <- lm.fit(as.matrix(tmp_train[, -(2:4)]), tmp_train$Weekly_Sales)$coefficients
+  mycoef[is.na(mycoef)] <- 0
+  tmp_pred <- mycoef[1] + as.matrix(tmp_test[, 4:55]) %*% mycoef[-1]
+  
+  test_pred[[i]] <- cbind(tmp_test[, 2:3], Date = tmp_test$Date, Weekly_Pred = tmp_pred[,1])
+}
+
+# turn the list into a table at once, 
+# this is much more efficient then keep concatenating small tables
+test_pred <- bind_rows(test_pred)
+
+
+
+
 #Preprocessing train
 data4 <- train
 
@@ -52,6 +93,7 @@ data4$Week_Number <- lubridate::week(data4$Date)
 #adding quarter & month columns
 data4$month <- lubridate::month(data4$Date)
 data4$quarter <- lubridate::quarter(data4$Date)
+#data4$year <- lubridate::year(data4$Date)
 
 
 ##Creating a event type dataframe##
@@ -63,7 +105,7 @@ Holiday_date <- c("12-02-2010", "11-02-2011", "10-02-2012", "08-02-2013","10-09-
 Holiday_date <- lubridate::dmy(Holiday_date)
 
 #Creating Events vector
-Events <-c(rep("Super Bowl", 4), rep("Labor Day", 4),rep("Thanksgiving", 4), rep("Christmas", 4))
+Events <-c(rep("Super_Bowl", 4), rep("Labor_Day", 4),rep("Thanksgiving", 4), rep("Christmas", 4))
 
 #Creating dataframe with Events and date
 Holidays_Data <- data.frame(Events,Holiday_date)
@@ -75,22 +117,31 @@ data4<-merge(data4,Holidays_Data, by.x= "Date", by.y="Holiday_date", all.x = TRU
 data4$Events = as.character(data4$Events)
 data4$Events[is.na(data4$Events)]= "No_Holiday"
 
+#Convert to factor and numeric
+categorical.vars = c("Super_Bowl", "Labor_Day", "Thanksgiving", "Christmas", "No_Holiday")
+
+for(var in categorical.vars) {
+  data4[var] = data4$Events == var
+}
+
+cols <- sapply(data4, is.logical)
+data4[,cols] <- lapply(data4[,cols], as.numeric)
+
+data4[data4$year == 2010, "Week_Number"] = data4[data4$year == 2010,"Week_Number"] - 1
+
+
 #Drop Unwanted columns and create train.x and train.y
-x_train_drop <- c('Date', 'Weekly_Sales')
+x_train_drop <- c('Date', 'Weekly_Sales', 'Events')
 train.x = data4[,!(names(data4) %in% x_train_drop)]
 train.y = train['Weekly_Sales']
 
-#Convert to factor and numeric
-train.x$Events <- as.numeric(as.factor(train.x$Events))
-train.x$IsHoliday <- as.numeric(train.x$IsHoliday)
-train.x$quarter <- as.numeric(train.x$quarter)
 
 
 
 #Preprocessing test
-test['IsHoliday'] = as.integer(as.logical(test$IsHoliday))
-
 data5 <- test
+
+data5['IsHoliday'] = as.integer(as.logical(data5$IsHoliday))
 
 #formatting date to dd-mm-yyyy
 data5$Date <- format(data5$Date, "%d-%m-%Y")
@@ -105,6 +156,7 @@ data5$Week_Number <- lubridate::week(data5$Date)
 #adding quarter & month columns
 data5$month <- lubridate::month(data5$Date)
 data5$quarter <- lubridate::quarter(data5$Date)
+#data5$year <- lubridate::year(data5$Date)
 
 
 ##Creating a event type dataframe##
@@ -116,7 +168,7 @@ Holiday_date <- c("12-02-2010", "11-02-2011", "10-02-2012", "08-02-2013","10-09-
 Holiday_date <- lubridate::dmy(Holiday_date)
 
 #Creating Events vector
-Events <-c(rep("Super Bowl", 4), rep("Labor Day", 4),rep("Thanksgiving", 4), rep("Christmas", 4))
+Events <-c(rep("Super_Bowl", 4), rep("Labor_Day", 4),rep("Thanksgiving", 4), rep("Christmas", 4))
 
 #Creating dataframe with Events and date
 Holidays_Data <- data.frame(Events,Holiday_date)
@@ -128,14 +180,23 @@ data5<-merge(data5,Holidays_Data, by.x= "Date", by.y="Holiday_date", all.x = TRU
 data5$Events = as.character(data5$Events)
 data5$Events[is.na(data5$Events)]= "No_Holiday"
 
-#Drop Unwanted columns and create test.x
-x_test_drop <- c('Date', 'Weekly_Sales')
-test.x = data5[,!(names(data5) %in% x_test_drop)]
-
 #Convert to factor and numeric
-test.x$Events <- as.numeric(as.factor(test.x$Events))
-test.x$IsHoliday <- as.numeric(test.x$IsHoliday)
-test.x$quarter <- as.numeric(test.x$quarter)
+categorical.vars = c("Super_Bowl", "Labor_Day", "Thanksgiving", "Christmas", "No_Holiday")
+
+for(var in categorical.vars) {
+  data5[var] = data5$Events == var
+}
+
+cols <- sapply(data5, is.logical)
+data5[,cols] <- lapply(data5[,cols], as.numeric)
+
+data5[data5$year == 2010, "Week_Number"] = data5[data5$year == 2010,"Week_Number"] - 1
+
+
+#Drop Unwanted columns and create train.x and train.y
+x_train_drop <- c('Date', 'Weekly_Sales', 'Events')
+test.x = data5[,!(names(data5) %in% x_train_drop)]
+
 
 ```
 
@@ -144,13 +205,11 @@ test.x$quarter <- as.numeric(test.x$quarter)
 model = lm(formula = as.matrix(train.y) ~ . , data = train.x)
 y_pred_train = predict(model, newdata = test.x)
 #print(y_pred_train)
-#y_pred_train
 ```
 
 ```{r}
 #print(test)
 #Lasso Regression
-#print(data.matrix(train.y))
 cv.out = cv.glmnet(as.matrix(train.x), as.matrix(train.y), alpha = 0)
 best.lam = cv.out$lambda.min
 #best.lam = cv.out$lambda.1se
