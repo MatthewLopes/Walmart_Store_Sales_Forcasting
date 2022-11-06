@@ -152,7 +152,8 @@ mypredict <- function() {
   # 
   # return(Ytest.pred.df)
   
-  
+  train['IsHoliday'] = as.numeric(unlist(train['IsHoliday']))*4+1
+  test['IsHoliday'] = as.numeric(unlist(test['IsHoliday']))*4+1
   
   train_pairs <- train[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
   test_pairs <- test[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
@@ -177,14 +178,23 @@ mypredict <- function() {
   
   # perform regression for each split, note we used lm.fit instead of lm
   for (i in 1:nrow(unique_pairs)) {
-    tmp_train <- train_split[[i]]
-    tmp_test <- test_split[[i]]
+    tmp_train <- as.data.frame(train_split[[i]])
+    tmp_test <- as.data.frame(test_split[[i]])
     
-    mycoef <- lm.fit(as.matrix(tmp_train[, -(2:4)]), tmp_train$Weekly_Sales)$coefficients
-    mycoef[is.na(mycoef)] <- 0
-    tmp_pred <- mycoef[1] + as.matrix(tmp_test[, 4:55]) %*% mycoef[-1]
     
-    test_pred[[i]] <- cbind(tmp_test[, 2:3], Date = tmp_test$Date, Weekly_Pred = tmp_pred[,1])
+    
+    tmp_train = tmp_train[, -1]
+    tmp_test = tmp_test[, -1]
+    
+    # mycoef <- lm.fit(as.matrix(tmp_train[, -(2:4)]), tmp_train$Weekly_Sales)$coefficients
+    # mycoef[is.na(mycoef)] <- 0
+    # tmp_pred <- mycoef[1] + as.matrix(tmp_test[, 4:55]) %*% mycoef[-1]
+    fit <- lm(formula = tmp_train$Weekly_Sales ~ . + I(Yr ^2) + I(Yr ^3), data = tmp_train[, -(1:3)])
+    #mycoef <- fit$coefficients
+    #tmp_pred <- mycoef[1] + as.matrix(tmp_test[, 4:55]) %*% mycoef[-(1:2)]
+    tmp_pred = predict(fit, tmp_test[, 3:54])
+    
+    test_pred[[i]] <- cbind(tmp_test[, 1:2], Date = tmp_test$Date, Weekly_Pred = tmp_pred)
   }
   
   # turn the list into a table at once, 

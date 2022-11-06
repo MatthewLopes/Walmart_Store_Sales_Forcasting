@@ -22,12 +22,10 @@ for (t in 1:num_folds) {
   fold_file <- paste0('fold_', t, '.csv')
   new_train <- readr::read_csv(fold_file, col_types = cols())
   
-  #print(new_train)
-  
   # extract predictions matching up to the new data
   scoring_tbl <- new_train %>% left_join(test_pred, by = c('Date', 'Store', 'Dept'))
   
-  print(scoring_tbl)
+  #print(scoring_tbl)
   
   # compute WMAE
   actuals <- scoring_tbl$Weekly_Sales
