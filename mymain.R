@@ -178,13 +178,23 @@ mypredict <- function() {
   
   # perform regression for each split, note we used lm.fit instead of lm
   for (i in 1:nrow(unique_pairs)) {
-    tmp_train <- as.data.frame(train_split[[i]])
-    tmp_test <- as.data.frame(test_split[[i]])
-    
-    
+    #tmp_train <- as.data.frame(train_split[[i]])
+    #tmp_test <- as.data.frame(test_split[[i]])
+    tmp_train <- as.matrix(train_split[[i]])
+    tmp_test <- as.matrix(test_split[[i]])
     
     tmp_train = tmp_train[, -1]
     tmp_test = tmp_test[, -1]
+    
+    X_m_n = 
+    # construct matrix M stores, n weeks
+    # Ith row and jth column corresponds to the weekly sales  at Is store and Js week
+    # use svd function in r to get bullet point 2 (could also try prcomp) to get UDV matrix
+    
+    #pca_tmp_train <- prcomp(tmp_train, center = FALSE, scale = FALSE)
+    
+    #F1_train = tmp_train%*%pca_tmp_train$rotation
+    #F1_test = Xtest%*%pca_tmp_train$rotation
     
     # mycoef <- lm.fit(as.matrix(tmp_train[, -(2:4)]), tmp_train$Weekly_Sales)$coefficients
     # mycoef[is.na(mycoef)] <- 0

@@ -38,6 +38,65 @@ colSums(is.na(train))
 #train['IsHoliday'] = as.numeric(unlist(train['IsHoliday']))*4+1
 #test['IsHoliday'] = as.numeric(unlist(test['IsHoliday']))*4+1
 
+#train['Week_Num'] = lubridate::week(train$Date)
+#test['Week_Num'] = lubridate::week(test$Date)
+
+#number_of_stores_in_department = matrix(0, length(unique(train$Dept)))
+#train_matrix = as.matrix(train)
+
+count_of_unique_weeks = length(unique(train$Date))
+
+train_df = as.data.frame(train)
+
+X_m_n_list = list()
+
+i = 1
+
+for(department in unique(train_df$Dept)) {
+  
+  X_m_n = matrix(0, length(unique(train_df[which(train_df$Dept == department), ]$Store)), count_of_unique_weeks)
+  
+  j = 1
+  
+  for(date in unique(train_df$Date)) {
+        
+    print(length(X_m_n[,j]))
+    print(length(train_df[which(train_df$Dept == department & train_df$Date == date), 'Weekly_Sales']))
+    
+    #X_m_n[,j] = train_df[which(train_df$Dept == department & train_df$Date == date), 'Weekly_Sales']
+    
+    for(store in unique(train_df[which(train_df$Dept == department), ]$Store)) {
+      
+    }
+  
+    j = j + 1
+  }
+
+  X_m_n_list[[i]] = X_m_n
+  
+  i = i + 1
+}
+
+
+U_D_V_list = list()
+
+i = 1
+
+for(X_m_n in X_m_n_list) {
+  print(X_m_n)
+  #U_D_V_list[[i]] = svd(X_m_n)
+  break
+  
+  i = i + 1
+}
+
+
+# construct matrix M stores, n weeks
+# Ith row and jth column corresponds to the weekly sales  at Is store and Js week
+# use svd function in r to get bullet point 2 (could also try prcomp) to get UDV matrix
+
+#arrange data back to the original format before we created the X_m_n matrix
+
 train_pairs <- train[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
 test_pairs <- test[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
 unique_pairs <- intersect(train_pairs[, 1:2], test_pairs[, 1:2])
@@ -47,20 +106,21 @@ train_split <- unique_pairs %>%
   left_join(train, by = c('Store', 'Dept')) %>% 
   mutate(Wk = factor(ifelse(lubridate::year(Date) == 2010, lubridate::week(Date) - 1, lubridate::week(Date)), levels = 1:52)) %>% 
   mutate(Yr = lubridate::year(Date))
-train_split = as_tibble(model.matrix(~ Weekly_Sales + Store + Dept + Yr + Wk, train_split)) %>% group_split(Store, Dept)
+train_split = as_tibble(model.matrix(~ Weekly_Sales + Store + Dept + Week_Num + Yr + Wk, train_split)) %>% group_split(Store, Dept)
   
 # do the same for the test set
 test_split <- unique_pairs %>% 
   left_join(test, by = c('Store', 'Dept')) %>% 
   mutate(Wk = factor(ifelse(lubridate::year(Date) == 2010, lubridate::week(Date) - 1, lubridate::week(Date)), levels = 1:52)) %>% 
   mutate(Yr = lubridate::year(Date))
-test_split = as_tibble(model.matrix(~ Store + Dept + Yr + Wk, test_split)) %>% mutate(Date = test_split$Date) %>% group_split(Store, Dept)
+test_split = as_tibble(model.matrix(~ Store + Dept + Week_Num + Yr + Wk, test_split)) %>% mutate(Date = test_split$Date) %>% group_split(Store, Dept)
 
 # pre-allocate a list to store the predictions
 test_pred <- vector(mode = "list", length = nrow(unique_pairs))
 
 # perform regression for each split, note we used lm.fit instead of lm
 for (i in 1:nrow(unique_pairs)) {
+  
   tmp_train <- as.data.frame(train_split[[i]])
   tmp_test <- as.data.frame(test_split[[i]])
   
@@ -70,10 +130,10 @@ for (i in 1:nrow(unique_pairs)) {
   # mycoef <- lm.fit(as.matrix(tmp_train[, -(2:4)]), tmp_train$Weekly_Sales)$coefficients
   # mycoef[is.na(mycoef)] <- 0
   # tmp_pred <- mycoef[1] + as.matrix(tmp_test[, 4:55]) %*% mycoef[-1]
-  fit <- lm(formula = tmp_train$Weekly_Sales ~ . + I(Yr ^2) + I(Yr ^3), data = tmp_train[, -(1:3)])
+  fit <- lm(formula = tmp_train$Weekly_Sales ~ . + I(Yr ^2) + I(Yr ^3), data = tmp_train[, -(1:4)])
   #mycoef <- fit$coefficients
   #tmp_pred <- mycoef[1] + as.matrix(tmp_test[, 4:55]) %*% mycoef[-(1:2)]
-  tmp_pred = predict(fit, tmp_test[, 3:54])
+  tmp_pred = predict(fit, tmp_test[, 4:55])
   
   test_pred[[i]] <- cbind(tmp_test[, 1:2], Date = tmp_test$Date, Weekly_Pred = tmp_pred)
 }
