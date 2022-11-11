@@ -40,8 +40,8 @@ colSums(is.na(train))
 #train['IsHoliday'] = as.numeric(unlist(train['IsHoliday']))*4+1
 #test['IsHoliday'] = as.numeric(unlist(test['IsHoliday']))*4+1
 
-# train['Week_Num'] = lubridate::week(train$Date)
-# test['Week_Num'] = lubridate::week(test$Date)
+#train['Week_Num'] = lubridate::week(train$Date)
+#test['Week_Num'] = lubridate::week(test$Date)
 
 #number_of_stores_in_department = matrix(0, length(unique(train$Dept)))
 #train_matrix = as.matrix(train)
@@ -51,79 +51,12 @@ count_of_unique_weeks = length(unique(train$Date))
 train_df = as.data.frame(train)
 
 X_m_n_list = list()
-```
 
-```{r}
-train %>% filter(Dept == "1")
-```
-
-```{r}
-X_m_n_list = list()
-```
-
-
-```{r}
-for(dpt_num in unique(train$Dept)) {
-  
-  #filter data by dept
-  dept_data = train %>% filter(Dept == dpt_num)
-  
-  #initialize mxn m is # stores with dept, n # of weeks
-  m = max(unique(dept_data$Store))
-  n = length(unique(dept_data$Date))
-  X_m_n = matrix(0, m, n)
-  
-  unique_stores = unique(dept_data$Store)
-  
-  for(store_num in unique_stores){
-    q = dept_data %>% filter(Store == store_num)
-    date_indicies= c(1:dim(q)[1])
-    X_m_n[store_num,date_indicies] = q$Weekly_Sales
-
-  }
-
-  X_m_n_list[[dpt_num]] = X_m_n
-
-}
-```
-
-```{r}
-for(dpt_num in unique(train_df$Dept)) {
-  U_D_V = svd(X_m_n_list[[dpt_num]])
-  
-  r = min(dim(U_D_V$u)[2], 8)
-
-  d_new = diag(U_D_V$d[1:r], r, r)
-  u_new = U_D_V$u[,1:r]
-  v_new = U_D_V$v[,1:r]
-  
-  x_tilda = u_new %*% d_new %*% t(v_new)
-  
-  dept_data = train %>% filter(Dept == dpt_num)
-  
-  unique_stores = unique(dept_data$Store)
-  
-  for(store_num in unique_stores){
-    p = dept_data %>% filter(Store == store_num)
-    date_indicies= c(1:dim(p)[1])
-    p$Weekly_Sales = x_tilda[store_num,]
-    
-  }
-  
-  break
-  # rev_dept_data = train %>% filter(Dept == dpt_num)
-  # rev_dept_data$Weekly_Sales = x_tilda
-  
-}
-```
-
-
-```{r}
 #i = 1
 
 for(department in unique(train_df$Dept)) {
   
- 
+  X_m_n = matrix(0, length(unique(train_df[which(train_df$Dept == department), ]$Store)), count_of_unique_weeks)
   
   hsh <- hashmap()
   
