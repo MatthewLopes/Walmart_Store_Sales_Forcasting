@@ -14,7 +14,12 @@ wae <- rep(0, num_folds)
 
 for (t in 1:num_folds) {
   # *** THIS IS YOUR PREDICTION FUNCTION ***
+  
+  print(paste0("working on fold ", t))
+  
   test_pred <- mypredict()
+  
+  print("mypredict finished")
   
   #print(test_pred)
   
@@ -33,6 +38,8 @@ for (t in 1:num_folds) {
   preds[is.na(preds)] <- 0
   weights <- if_else(scoring_tbl$IsHoliday, 5, 1)
   wae[t] <- sum(weights * abs(actuals - preds)) / sum(weights)
+  
+  print(paste0("wae is ", sum(weights * abs(actuals - preds)) / sum(weights)))
   
   # update train data and get ready to predict at (t+1)
   train <- train %>% add_row(new_train)

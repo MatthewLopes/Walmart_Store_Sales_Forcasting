@@ -1,6 +1,6 @@
 # Libraries
 library(glmnet)
-
+library(dplyr)
 
 # Source: https://www.kaggle.com/code/sarvaninandipati/analysis-prediction-of-walmart-sales-using-r/notebook
 
@@ -11,41 +11,35 @@ library(glmnet)
 
 mypredict <- function() {
   
-  # #Preprocessing train
-  count_of_unique_weeks = length(unique(train$Date))
   train_df = as.data.frame(train)
-  X_m_n_list = list()
   
-  for(department in unique(train_df$Dept)) {
+  ## Move into X matrix
+  
+  for(dpt_num in unique(train$Dept)) {
     
-    X_m_n = matrix(0, length(unique(train_df[which(train_df$Dept == department), ]$Store)), count_of_unique_weeks)
+    #filter data by dept
+    dept_data = train %>% filter(Dept == dpt_num)
     
-    j = 1
+    #initialize mxn m is # stores with dept, n # of weeks
+    m = max(unique(dept_data$Store))
+    n = length(unique(dept_data$Date))
+    X_m_n = matrix(0, m, n)
     
-    for(date in unique(train_df$Date)) {
-      k = 1
+    unique_stores = unique(dept_data$Store)
+    
+    for(store_num in unique_stores){
+      q = dept_data %>% filter(Store == store_num)
+      date_indicies= c(1:dim(q)[1])
+      X_m_n[store_num,date_indicies] = q$Weekly_Sales
       
-      for(store in unique(train_df[which(train_df$Dept == department), ]$Store)) {
-        
-        row = train_df[train_df$Dept == department & train_df$Date == date & train_df$Store == store, ]
-        
-        if(nrow(row)) {
-          X_m_n[k, j] = row$Weekly_Sales[1]
-        } else {
-          X_m_n[k, j] = 0
-        }
-        
-        k = k + 1
-      }
-      
-      j = j + 1
     }
-    
-    X_m_n_list[[department]] = X_m_n
+    X_m_n_list[[dpt_num]] = X_m_n
   }
   
-  for(department in unique(train_df$Dept)) {
-    U_D_V = svd(X_m_n_list[[department]])
+  ## Apply SVD and bring back into Train
+  
+  for(dpt_num in unique(train_df$Dept)) {
+    U_D_V = svd(X_m_n_list[[dpt_num]])
     
     r = min(dim(U_D_V$u)[2], 8)
     
@@ -55,29 +49,20 @@ mypredict <- function() {
     
     x_tilda = u_new %*% d_new %*% t(v_new)
     
-    j = 1
+    dept_data = train %>% filter(Dept == dpt_num)
     
-    for(date in unique(train_df$Date)) {
-      k = 1
+    unique_stores = unique(dept_data$Store)
+    
+    for(store_num in unique_stores){
+      p = dept_data %>% filter(Store == store_num)
+      date_indicies= c(1:dim(p)[1])
+      p$Weekly_Sales = x_tilda[store_num,date_indicies]
       
-      for(store in unique(train_df[which(train_df$Dept == department), ]$Store)) {
-        
-        row = train_df[train_df$Dept == department & train_df$Date == date & train_df$Store == store, ]
-        
-        if(nrow(row)) {
-          train_df[train_df$Dept == department & train_df$Date == date & train_df$Store == store, ]$Weekly_Sales = x_tilda[k, j]
-        }
-        
-        k = k + 1
-      }
+      train_df[train_df$Dept == dpt_num & train_df$Store == store_num, ]$Weekly_Sales = x_tilda[store_num,date_indicies]
       
-      j = j + 1
     }
+    
   }
-
-  
-  #train_df['IsHoliday'] = as.numeric(unlist(train['IsHoliday']))*4+1
-  #test['IsHoliday'] = as.numeric(unlist(test['IsHoliday']))*4+1
   
   train_pairs <- train_df[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
   test_pairs <- test[, 1:2] %>% count(Store, Dept) %>% filter(n != 0)
@@ -102,15 +87,14 @@ mypredict <- function() {
   
   # perform regression for each split, note we used lm.fit instead of lm
   for (i in 1:nrow(unique_pairs)) {
-    #tmp_train <- as.data.frame(train_split[[i]])
-    #tmp_test <- as.data.frame(test_split[[i]])
-    tmp_train <- as.matrix(train_split[[i]])
-    tmp_test <- as.matrix(test_split[[i]])
+    tmp_train <- as.data.frame(train_split[[i]])
+    tmp_test <- as.data.frame(test_split[[i]])
+    # tmp_train <- as.matrix(train_split[[i]])
+    # tmp_test <- as.matrix(test_split[[i]])
     
     tmp_train = tmp_train[, -1]
     tmp_test = tmp_test[, -1]
     
-    X_m_n = 
     # construct matrix M stores, n weeks
     # Ith row and jth column corresponds to the weekly sales  at Is store and Js week
     # use svd function in r to get bullet point 2 (could also try prcomp) to get UDV matrix

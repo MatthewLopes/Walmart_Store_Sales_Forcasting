@@ -88,6 +88,7 @@ for(dpt_num in unique(train$Dept)) {
 ```
 
 ```{r}
+
 for(dpt_num in unique(train_df$Dept)) {
   U_D_V = svd(X_m_n_list[[dpt_num]])
   
@@ -106,112 +107,17 @@ for(dpt_num in unique(train_df$Dept)) {
   for(store_num in unique_stores){
     p = dept_data %>% filter(Store == store_num)
     date_indicies= c(1:dim(p)[1])
-    p$Weekly_Sales = x_tilda[store_num,]
+    p$Weekly_Sales = x_tilda[store_num,date_indicies]
+    
+    train_df[train_df$Dept == dpt_num & train_df$Store == store_num, ]$Weekly_Sales = x_tilda[store_num,date_indicies]
     
   }
-  
-  break
-  # rev_dept_data = train %>% filter(Dept == dpt_num)
-  # rev_dept_data$Weekly_Sales = x_tilda
   
 }
 ```
 
 
 ```{r}
-#i = 1
-
-for(department in unique(train_df$Dept)) {
-  
- 
-  
-  hsh <- hashmap()
-  
-  j = 1
-  
-  for(date in unique(train_df$Date)) {
-        
-    k = 1
-    
-    for(store in unique(train_df[which(train_df$Dept == department), ]$Store)) {
-      
-      hsh[[paste(toString(store),"|",toString(date))]] = c(j,k)
-      
-      k = k + 1
-    }
-  
-    j = j + 1
-  }
-  df_dpt = train_df[train_df$Dept == department,]
-  for(p in 1:nrow(df_dpt)){
-    row = df_dpt[p,]
-    store = row$Store
-    date = row$Date
-    
-    idx = hsh[[paste(toString(store),"|",toString(date))]]
-    
-    j = idx[1]
-    k = idx[2]
-    
-    X_m_n[k,j] = row$Weekly_Sales
-   
-  }
-  
-
-  X_m_n_list[[department]] = X_m_n
-  
-  #i = i + 1
-}
-
-
-
-#U_D_V_list = list()
-
-for(department in unique(train_df$Dept)) {
-  U_D_V = svd(X_m_n_list[[department]])
-  
-  r = min(dim(U_D_V$u)[2], 8)
-
-  d_new = diag(U_D_V$d[1:r], r, r)
-  u_new = U_D_V$u[,1:r]
-  v_new = U_D_V$v[,1:r]
-  
-  x_tilda = u_new %*% d_new %*% t(v_new)
-  
-  j = 1
-  
-  for(date in unique(train_df$Date)) {
-    k = 1
-    
-    for(store in unique(train_df[which(train_df$Dept == department), ]$Store)) {
-      
-      row = train_df[train_df$Dept == department & train_df$Date == date & train_df$Store == store, ]
-      
-      if(nrow(row)) {
-        train_df[train_df$Dept == department & train_df$Date == date & train_df$Store == store, ]$Weekly_Sales = x_tilda[k, j]
-      }
-      
-      k = k + 1
-    }
-    
-    j = j + 1
-  }
-}
-
-# U_D_V_list = list()
-# 
-# for(X_m_n in X_m_n_list) {
-#   print(X_m_n)
-#   #U_D_V_list[[i]] = svd(X_m_n)
-#   break
-#   
-#   i = i + 1
-# }
-
-
-# construct matrix M stores, n weeks
-# Ith row and jth column corresponds to the weekly sales  at Is store and Js week
-# use svd function in r to get bullet point 2 (could also try prcomp) to get UDV matrix
 
 #arrange data back to the original format before we created the X_m_n matrix
 
@@ -292,160 +198,4 @@ test_pred <- bind_rows(test_pred)
 
 ```
 
-
-
-```{r}
-# #Preprocessing train
-# data4 <- train
-# 
-# data4['IsHoliday'] = as.integer(as.logical(data4$IsHoliday))
-# 
-# #formatting date to dd-mm-yyyy
-# data4$Date <- format(data4$Date, "%d-%m-%Y")
-# 
-# #changing date column in dataframe to date format & arranging in ascending order as per dates
-# data4$Date <- lubridate::dmy(data4$Date)
-# data4 <- dplyr::arrange(data4,Date)
-# 
-# #Creating a week number,month,quarter column in dataframe
-# data4$Week_Number <- lubridate::week(data4$Date)
-# 
-# #adding quarter & month columns
-# data4$month <- lubridate::month(data4$Date)
-# data4$quarter <- lubridate::quarter(data4$Date)
-# #data4$year <- lubridate::year(data4$Date)
-# 
-# 
-# ##Creating a event type dataframe##
-# 
-# # creating Holiday_date vector
-# Holiday_date <- c("12-02-2010", "11-02-2011", "10-02-2012", "08-02-2013","10-09-2010", "09-09-2011", "07-09-2012", "06-09-2013","26-11-2010", "25-11-2011", "23-11-2012", "29-11-2013","31-12-2010", "30-12-2011", "28-12-2012", "27-12-2013")
-# 
-# #assigning date format to Holiday_date vector
-# Holiday_date <- lubridate::dmy(Holiday_date)
-# 
-# #Creating Events vector
-# Events <-c(rep("Super_Bowl", 4), rep("Labor_Day", 4),rep("Thanksgiving", 4), rep("Christmas", 4))
-# 
-# #Creating dataframe with Events and date
-# Holidays_Data <- data.frame(Events,Holiday_date)
-# 
-# #merging both dataframes
-# data4<-merge(data4,Holidays_Data, by.x= "Date", by.y="Holiday_date", all.x = TRUE)
-# 
-# #Replacing null values in Event with No_Holiday
-# data4$Events = as.character(data4$Events)
-# data4$Events[is.na(data4$Events)]= "No_Holiday"
-# 
-# #Convert to factor and numeric
-# categorical.vars = c("Super_Bowl", "Labor_Day", "Thanksgiving", "Christmas", "No_Holiday")
-# 
-# for(var in categorical.vars) {
-#   data4[var] = data4$Events == var
-# }
-# 
-# cols <- sapply(data4, is.logical)
-# data4[,cols] <- lapply(data4[,cols], as.numeric)
-# 
-# data4[data4$year == 2010, "Week_Number"] = data4[data4$year == 2010,"Week_Number"] - 1
-# 
-# 
-# #Drop Unwanted columns and create train.x and train.y
-# x_train_drop <- c('Date', 'Weekly_Sales', 'Events')
-# train.x = data4[,!(names(data4) %in% x_train_drop)]
-# train.y = train['Weekly_Sales']
-# 
-# 
-# 
-# 
-# #Preprocessing test
-# data5 <- test
-# 
-# data5['IsHoliday'] = as.integer(as.logical(data5$IsHoliday))
-# 
-# #formatting date to dd-mm-yyyy
-# data5$Date <- format(data5$Date, "%d-%m-%Y")
-# 
-# #changing date column in dataframe to date format & arranging in ascending order as per dates
-# data5$Date <- lubridate::dmy(data5$Date)
-# data5 <- dplyr::arrange(data5,Date)
-# 
-# #Creating a week number,month,quarter column in dataframe
-# data5$Week_Number <- lubridate::week(data5$Date)
-# 
-# #adding quarter & month columns
-# data5$month <- lubridate::month(data5$Date)
-# data5$quarter <- lubridate::quarter(data5$Date)
-# #data5$year <- lubridate::year(data5$Date)
-# 
-# 
-# ##Creating a event type dataframe##
-# 
-# # creating Holiday_date vector
-# Holiday_date <- c("12-02-2010", "11-02-2011", "10-02-2012", "08-02-2013","10-09-2010", "09-09-2011", "07-09-2012", "06-09-2013","26-11-2010", "25-11-2011", "23-11-2012", "29-11-2013","31-12-2010", "30-12-2011", "28-12-2012", "27-12-2013")
-# 
-# #assigning date format to Holiday_date vector
-# Holiday_date <- lubridate::dmy(Holiday_date)
-# 
-# #Creating Events vector
-# Events <-c(rep("Super_Bowl", 4), rep("Labor_Day", 4),rep("Thanksgiving", 4), rep("Christmas", 4))
-# 
-# #Creating dataframe with Events and date
-# Holidays_Data <- data.frame(Events,Holiday_date)
-# 
-# #merging both dataframes
-# data5<-merge(data5,Holidays_Data, by.x= "Date", by.y="Holiday_date", all.x = TRUE)
-# 
-# #Replacing null values in Event with No_Holiday
-# data5$Events = as.character(data5$Events)
-# data5$Events[is.na(data5$Events)]= "No_Holiday"
-# 
-# #Convert to factor and numeric
-# categorical.vars = c("Super_Bowl", "Labor_Day", "Thanksgiving", "Christmas", "No_Holiday")
-# 
-# for(var in categorical.vars) {
-#   data5[var] = data5$Events == var
-# }
-# 
-# cols <- sapply(data5, is.logical)
-# data5[,cols] <- lapply(data5[,cols], as.numeric)
-# 
-# data5[data5$year == 2010, "Week_Number"] = data5[data5$year == 2010,"Week_Number"] - 1
-# 
-# 
-# #Drop Unwanted columns and create train.x and train.y
-# x_train_drop <- c('Date', 'Weekly_Sales', 'Events')
-# test.x = data5[,!(names(data5) %in% x_train_drop)]
-
-
-```
-
-
-```{r}
-# model = lm(formula = as.matrix(train.y) ~ . , data = train.x)
-# y_pred_train = predict(model, newdata = test.x)
-# #print(y_pred_train)
-```
-
-```{r}
-# #print(test)
-# #Lasso Regression
-# cv.out = cv.glmnet(as.matrix(train.x), as.matrix(train.y), alpha = 0)
-# best.lam = cv.out$lambda.min
-# #best.lam = cv.out$lambda.1se
-# Ytest.pred = predict(cv.out, s = best.lam, newx = as.matrix(test.x))
-# Ytest.pred.df = data.frame(Date = test[3], Store = test[1], Dept = test[2], Weekly_Pred = Ytest.pred)
-# colnames(Ytest.pred.df)[4]<-"Weekly_Pred"
-# print(Ytest.pred.df)
-```
-
-```{r}
-#xgb.model <- xgboost(data = data.matrix(train.x), 
-                       #label = as.matrix(train.y), max_depth = 6,
-                       #eta = 0.05, nrounds = 5000,
-                       #subsample = 0.5,
-                       #verbose = FALSE)
-#test = predict(xgb.model, data.matrix(test.x))
-#print(test)
-```
 
