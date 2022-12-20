@@ -1,4 +1,4 @@
-# project_2
+# Walmart Store Sales Forcasting
 Project 2: Walmart Store Sales Forcasting
 
 Fall 2022
